@@ -1,0 +1,132 @@
+# GECKO Spec Schema (v1)
+#
+# This is the canonical schema for GECKO Simulator Spec Files.
+# The AI generation pipeline uses this schema as the output contract
+# for Step 1 (Concept Modeling).
+#
+# Every generated simulator spec.md must have YAML frontmatter that
+# conforms to this schema.
+
+# Required fields
+name:
+  type: string
+  required: true
+  description: "Human-readable simulator name"
+
+version:
+  type: integer
+  required: true
+  description: "Spec version number, incremented on each iteration"
+  default: 1
+
+created:
+  type: date
+  required: true
+  description: "ISO 8601 date when the spec was first created"
+
+modified:
+  type: date
+  required: true
+  description: "ISO 8601 date of the most recent modification"
+
+language:
+  type: string
+  required: true
+  enum: [en, es]
+  description: "Language of the simulator UI text"
+
+tags:
+  type: array
+  items: string
+  required: true
+  description: "Domain and concept tags for search and filtering"
+
+rendering_library:
+  type: string
+  required: true
+  enum: [three.js, babylon.js, p5.js, d3.js, chart.js, "canvas 2D"]
+  description: "The rendering library selected for this simulator"
+
+# Agent definitions
+agents:
+  type: array
+  required: true
+  items:
+    type: object
+    properties:
+      name:
+        type: string
+        required: true
+        description: "Agent type name (PascalCase)"
+      attributes:
+        type: array
+        items: string
+        required: true
+        description: "List of typed attributes this agent has"
+      behaviors:
+        type: array
+        items: string
+        required: true
+        description: "List of named behaviors this agent exhibits"
+
+# Environment definition
+environment:
+  type: object
+  required: true
+  properties:
+    type:
+      type: string
+      required: true
+      enum: [2D, 3D]
+    physics:
+      type: string
+      required: true
+      description: "Named physics/logic model"
+    attributes:
+      type: array
+      items: string
+      required: true
+      description: "List of environment attributes (global parameters)"
+
+# Interaction definitions
+interactions:
+  type: array
+  required: true
+  items:
+    type: object
+    properties:
+      trigger:
+        type: string
+        required: true
+        description: "What causes this interaction (user action or simulation event)"
+      effect:
+        type: string
+        required: true
+        description: "What happens as a result"
+
+# Export capabilities
+exports:
+  type: array
+  items: string
+  required: false
+  default: [state_json]
+  description: "Data export formats the simulator supports"
+  enum_values: [state_json, agent_population_json, csv, screenshot]
+
+# Optional fields
+author:
+  type: string
+  required: false
+  description: "Author alias from local profile"
+
+strategies_used:
+  type: array
+  items: string
+  required: false
+  description: "Names of modeling strategies from knowledge/strategies/ used in this simulator"
+
+complexity:
+  type: string
+  required: false
+  enum: [beginner, intermediate, advanced]
+  description: "Estimated complexity level"

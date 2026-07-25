@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gravedad más allá de la luz / Finite Speed of Gravity</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #090a0f;
+    }
+    #c {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #init-overlay {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(18, 20, 29, 0.85);
+      border: 1px solid #00e5ff;
+      color: #00e5ff;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 9999;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+  <div id="init-overlay">Fase Inicial / Initializing simulation...</div>
+  <canvas id="c"></canvas>
+
+  <!-- 1. Inline gecko-ui.js v1.0 verbatim -->
+  <script>
+  /* === BEGIN gecko-ui.js v1.0 === */
+  (function(window) {
+    'use strict';
+
+    const I18N = {
+      en: {
+        play: 'Play',
+        pause: 'Pause',
+        reset: 'Reset',
+        export: 'Export State',
+        import: 'Import State',
+        importError: 'Invalid state file',
+        confirmDelete: 'Are you sure?',
+        debug: 'Debug Console',
+        camZoomIn: 'Zoom +',
+        camZoomOut: 'Zoom -',
+        camRotXPos: 'Rot X+',
+        camRotXNeg: 'Rot X-',
+        camRotZPos: 'Rot Z+',
+        camRotZNeg: 'Rot Z-',
+        apply: 'Apply'
+      },
+      es: {
+        play: 'Reproducir',
+        pause: 'Pausar',
+        reset: 'Reiniciar',
+        export: 'Exportar Estado',
+        import: 'Importar Estado',
+        importError: 'Archivo de estado inválido',
+        confirmDelete: '¿Estás seguro?',
+        debug: 'Consola de Depuración',
+        camZoomIn: 'Zoom +',
+        camZoomOut: 'Zoom -',
+        camRotXPos: 'Rot X+',
+        camRotXNeg: 'Rot X-',
+        camRotZPos: 'Rot Z+',
+        camRotZNeg: 'Rot Z-',
+        apply: 'Aplicar'
+      }
+    };
+
+    function injectCSS(accentColor, sidebarWidth) {
+      if (document.getElementById('gecko-ui-styles')) return;
+      const style = document.createElement('style');
+      style.id = 'gecko-ui-styles';
+      style.textContent = `
+        :root {
+          --gecko-bg: #12141d;
+          --gecko-bg-top: #181b28;
+          --gecko-bg-card: #1c2030;
+          --gecko-bg-input: #11131c;
+          --gecko-border: #232736;
+          --gecko-text: #e0e6ed;
+          --gecko-text-dim: #8b9bb4;
+          --gecko-accent: ${accentColor || '#00e5ff'};
+          --gecko-accent-hover: #33ebff;
+          --gecko-danger: #ff4757;
+        }
+        body {
+          padding-right: ${sidebarWidth || 320}px !important;
+          box-sizing: border-box !important;
+        }
+        #gecko-sidebar {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: ${sidebarWidth || 320}px;
+          height: 100vh;
+          background: var(--gecko-bg);
+          border-left: 1px solid var(--gecko-border);
+          color: var(--gecko-text);
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: 13px;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          z-index: 999999;
+          overflow: hidden;
+          user-select: none;
+        }
+        #gecko-topbar {
+          background: var(--gecko-bg-top);
+          padding: 10px 14px;
+          border-bottom: 1px solid var(--gecko-border);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .gecko-title {
+          font-weight: 700;
+          font-size: 14px;
+          color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .gecko-btn-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .gecko-btn {
+          background: var(--gecko-bg-card);
+          color: var(--gecko-text);
+          border: 1px solid var(--gecko-border);
+          padding: 5px 10px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.15s ease;
+        }
+        .gecko-btn:hover {
+          border-color: var(--gecko-accent);
+          color: #fff;
+        }
+        .gecko-btn-accent {
+          background: var(--gecko-accent);
+          color: #000;
+          border-color: var(--gecko-accent);
+        }
+        .gecko-btn-accent:hover {
+          background: var(--gecko-accent-hover);
+          color: #000;
+        }
+        .gecko-btn-icon {
+          padding: 4px 8px;
+          font-size: 14px;
+        }
+        #gecko-camera {
+          background: var(--gecko-bg-top);
+          padding: 8px 14px;
+          border-bottom: 1px solid var(--gecko-border);
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .gecko-cam-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 4px;
+        }
+        .gecko-cam-info {
+          font-size: 11px;
+          color: var(--gecko-text-dim);
+        }
+        #gecko-panels {
+          flex: 1;
+          overflow-y: auto;
+          padding: 10px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        #gecko-panels::-webkit-scrollbar {
+          width: 6px;
+        }
+        #gecko-panels::-webkit-scrollbar-thumb {
+          background: var(--gecko-border);
+          border-radius: 3px;
+        }
+        .gecko-panel {
+          background: var(--gecko-bg-card);
+          border: 1px solid var(--gecko-border);
+          border-radius: 6px;
+          overflow: hidden;
+        }
+        .gecko-panel-header {
+          padding: 8px 12px;
+          background: rgba(255,255,255,0.03);
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .gecko-panel-header:hover {
+          color: var(--gecko-accent);
+        }
+        .gecko-panel-body {
+          padding: 10px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .gecko-panel-body.collapsed {
+          display: none;
+        }
+        .gecko-control-row {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .gecko-control-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .gecko-label {
+          font-size: 12px;
+          color: var(--gecko-text-dim);
+        }
+        .gecko-val-badge {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--gecko-accent);
+        }
+        .gecko-input-text {
+          background: var(--gecko-bg-input);
+          border: 1px solid var(--gecko-border);
+          color: #fff;
+          padding: 5px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .gecko-input-text:focus {
+          outline: none;
+          border-color: var(--gecko-accent);
+        }
+        .gecko-range {
+          width: 100%;
+          accent-color: var(--gecko-accent);
+          cursor: pointer;
+        }
+        .gecko-flex-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .gecko-checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+        }
+        .gecko-checkbox {
+          accent-color: var(--gecko-accent);
+          cursor: pointer;
+        }
+        .gecko-select {
+          background: var(--gecko-bg-input);
+          border: 1px solid var(--gecko-border);
+          color: #fff;
+          padding: 5px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          width: 100%;
+          cursor: pointer;
+        }
+        .gecko-metrics-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          background: var(--gecko-bg-input);
+          padding: 8px;
+          border-radius: 4px;
+          border: 1px solid var(--gecko-border);
+        }
+        .gecko-metric-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+        }
+        .gecko-metric-key {
+          color: var(--gecko-text-dim);
+        }
+        .gecko-metric-val {
+          font-weight: 600;
+          color: #fff;
+          font-family: monospace;
+        }
+        .gecko-separator {
+          height: 1px;
+          background: var(--gecko-border);
+          margin: 4px 0;
+        }
+        #gecko-debug {
+          background: #090a0f;
+          border-top: 1px solid var(--gecko-border);
+          max-height: 140px;
+          display: flex;
+          flex-direction: column;
+        }
+        .gecko-debug-header {
+          padding: 4px 10px;
+          font-size: 10px;
+          font-weight: bold;
+          color: var(--gecko-text-dim);
+          background: #11131c;
+          border-bottom: 1px solid var(--gecko-border);
+        }
+        .gecko-debug-content {
+          padding: 6px 10px;
+          font-family: monospace;
+          font-size: 10px;
+          color: #7bed9f;
+          overflow-y: auto;
+          white-space: pre-wrap;
+          word-break: break-all;
+          flex: 1;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    class GeckoUI {
+      constructor(config) {
+        if (!config || !config.canvas) {
+          throw new Error('GeckoUI requires a config object with a canvas property');
+        }
+        this.config = config;
+        this.lang = config.language === 'es' ? 'es' : 'en';
+        this.t = I18N[this.lang];
+        this.sidebarWidth = config.sidebarWidth || 320;
+        this.accentColor = config.accentColor || '#00e5ff';
+        this.isPlaying = false;
+        this.eventListeners = {};
+        this.panels = [];
+        this.controlsMap = new Map();
+        this.debugLogs = [];
+        this.lastFrameTime = null;
+        this.rAFId = null;
+
+        injectCSS(this.accentColor, this.sidebarWidth);
+        this._initDOM();
+        this._initDebugConsole();
+
+        if (Array.isArray(config.panels)) {
+          config.panels.forEach(p => this.addPanel(p));
+        }
+
+        if (config.onPlay) this.on('play', config.onPlay);
+        if (config.onPause) this.on('pause', config.onPause);
+        if (config.onReset) this.on('reset', config.onReset);
+        if (config.onImport) this.on('import', config.onImport);
+
+        this._startLoop();
+      }
+
+      _initDOM() {
+        let sidebar = document.getElementById('gecko-sidebar');
+        if (sidebar) sidebar.remove();
+
+        sidebar = document.createElement('div');
+        sidebar.id = 'gecko-sidebar';
+
+        const topbar = document.createElement('div');
+        topbar.id = 'gecko-topbar';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'gecko-title';
+        titleEl.textContent = this.config.title || 'GECKO';
+        topbar.appendChild(titleEl);
+
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'gecko-btn-group';
+
+        this.playBtn = document.createElement('button');
+        this.playBtn.className = 'gecko-btn gecko-btn-accent';
+        this.playBtn.textContent = '▶ ' + this.t.play;
+        this.playBtn.addEventListener('click', () => this.togglePlay());
+        btnGroup.appendChild(this.playBtn);
+
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'gecko-btn';
+        resetBtn.textContent = '↺ ' + this.t.reset;
+        resetBtn.addEventListener('click', () => {
+          this.emit('reset');
+        });
+        btnGroup.appendChild(resetBtn);
+
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'gecko-btn gecko-btn-icon';
+        exportBtn.title = this.t.export;
+        exportBtn.textContent = '⤓';
+        exportBtn.addEventListener('click', () => this.exportState());
+        btnGroup.appendChild(exportBtn);
+
+        const importBtn = document.createElement('button');
+        importBtn.className = 'gecko-btn gecko-btn-icon';
+        importBtn.title = this.t.import;
+        importBtn.textContent = '⤒';
+        
+        const hiddenFileInput = document.createElement('input');
+        hiddenFileInput.type = 'file';
+        hiddenFileInput.accept = '.json';
+        hiddenFileInput.style.display = 'none';
+        hiddenFileInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const data = JSON.parse(evt.target.result);
+              this.emit('import', data);
+              this.refresh();
+            } catch (err) {
+              alert(this.t.importError);
+            }
+          };
+          reader.readAsText(file);
+        });
+        importBtn.appendChild(hiddenFileInput);
+        importBtn.addEventListener('click', () => hiddenFileInput.click());
+        btnGroup.appendChild(importBtn);
+
+        topbar.appendChild(btnGroup);
+        sidebar.appendChild(topbar);
+
+        if (this.config.camera) {
+          const camContainer = document.createElement('div');
+          camContainer.id = 'gecko-camera';
+
+          const camGrid = document.createElement('div');
+          camGrid.className = 'gecko-cam-grid';
+
+          const c = this.config.camera;
+          const createCamBtn = (text, fn) => {
+            const btn = document.createElement('button');
+            btn.className = 'gecko-btn';
+            btn.textContent = text;
+            btn.addEventListener('click', fn);
+            return btn;
+          };
+
+          if (c.onZoomIn) camGrid.appendChild(createCamBtn(this.t.camZoomIn, c.onZoomIn));
+          if (c.onZoomOut) camGrid.appendChild(createCamBtn(this.t.camZoomOut, c.onZoomOut));
+          if (c.onRotateXPos) camGrid.appendChild(createCamBtn(this.t.camRotXPos, c.onRotateXPos));
+          if (c.onRotateXNeg) camGrid.appendChild(createCamBtn(this.t.camRotXNeg, c.onRotateXNeg));
+          if (c.onRotateZPos) camGrid.appendChild(createCamBtn(this.t.camRotZPos, c.onRotateZPos));
+          if (c.onRotateZNeg) camGrid.appendChild(createCamBtn(this.t.camRotZNeg, c.onRotateZNeg));
+
+          camContainer.appendChild(camGrid);
+
+          if (c.getCameraInfo) {
+            this.camInfoEl = document.createElement('div');
+            this.camInfoEl.className = 'gecko-cam-info';
+            camContainer.appendChild(this.camInfoEl);
+          }
+
+          sidebar.appendChild(camContainer);
+        }
+
+        this.panelsContainer = document.createElement('div');
+        this.panelsContainer.id = 'gecko-panels';
+        sidebar.appendChild(this.panelsContainer);
+
+        if (this.config.debugConsole) {
+          const debugContainer = document.createElement('div');
+          debugContainer.id = 'gecko-debug';
+
+          const debugHeader = document.createElement('div');
+          debugHeader.className = 'gecko-debug-header';
+          debugHeader.textContent = this.t.debug;
+          debugContainer.appendChild(debugHeader);
+
+          this.debugContentEl = document.createElement('div');
+          this.debugContentEl.className = 'gecko-debug-content';
+          debugContainer.appendChild(this.debugContentEl);
+
+          sidebar.appendChild(debugContainer);
+        }
+
+        document.body.appendChild(sidebar);
+      }
+
+      _initDebugConsole() {
+        if (!this.config.debugConsole) return;
+        const self = this;
+        const originalLog = console.log;
+        const originalError = console.error;
+
+        console.log = function(...args) {
+          originalLog.apply(console, args);
+          self.debugLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+        };
+        console.error = function(...args) {
+          originalError.apply(console, args);
+          self.debugLog('[ERROR] ' + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+        };
+      }
+
+      debugLog(msg) {
+        if (!this.debugContentEl) return;
+        const maxLines = this.config.debugConsoleLines || 20;
+        this.debugLogs.push(msg);
+        if (this.debugLogs.length > maxLines) {
+          this.debugLogs.shift();
+        }
+        this.debugContentEl.textContent = this.debugLogs.join('\n');
+        this.debugContentEl.scrollTop = this.debugContentEl.scrollHeight;
+      }
+
+      togglePlay() {
+        this.setPlaying(!this.isPlaying);
+      }
+
+      setPlaying(playing) {
+        this.isPlaying = !!playing;
+        if (this.isPlaying) {
+          this.playBtn.textContent = '⏸ ' + this.t.pause;
+          this.emit('play');
+        } else {
+          this.playBtn.textContent = '▶ ' + this.t.play;
+          this.emit('pause');
+        }
+      }
+
+      _startLoop() {
+        const step = (timestamp) => {
+          if (!this.lastFrameTime) this.lastFrameTime = timestamp;
+          const dt = Math.min((timestamp - this.lastFrameTime) / 1000, 0.1);
+          this.lastFrameTime = timestamp;
+
+          if (this.isPlaying) {
+            this.emit('tick', dt);
+          }
+
+          this.refresh();
+
+          this.rAFId = requestAnimationFrame(step);
+        };
+        this.rAFId = requestAnimationFrame(step);
+      }
+
+      refresh() {
+        if (this.config.camera && this.config.camera.getCameraInfo && this.camInfoEl) {
+          const info = this.config.camera.getCameraInfo();
+          if (info) {
+            this.camInfoEl.textContent = Object.entries(info)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(' | ');
+          }
+        }
+
+        this.controlsMap.forEach((ctrl) => {
+          if (ctrl.config.get && typeof ctrl.refresh === 'function') {
+            ctrl.refresh();
+          }
+        });
+
+        if (typeof this.config.getState === 'function') {
+          const state = this.config.getState();
+          if (state && typeof state === 'object') {
+            this.controlsMap.forEach((ctrl) => {
+              if (ctrl.config.type === 'metrics' && typeof ctrl.updateMetrics === 'function') {
+                ctrl.updateMetrics(state);
+              }
+            });
+          }
+        }
+      }
+
+      exportState() {
+        let data = {};
+        if (typeof this.config.onExport === 'function') {
+          data = this.config.onExport();
+        } else if (typeof this.config.getState === 'function') {
+          data = this.config.getState();
+        }
+        const jsonStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (this.config.title || 'gecko-simulator').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-state.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      on(event, fn) {
+        if (!this.eventListeners[event]) this.eventListeners[event] = [];
+        this.eventListeners[event].push(fn);
+      }
+
+      emit(event, payload) {
+        if (this.eventListeners[event]) {
+          this.eventListeners[event].forEach(fn => fn(payload));
+        }
+      }
+
+      addPanel(panelConfig) {
+        if (!panelConfig || !panelConfig.id) return;
+        const panelEl = document.createElement('div');
+        panelEl.className = 'gecko-panel';
+        panelEl.id = 'gecko-panel-' + panelConfig.id;
+
+        const header = document.createElement('div');
+        header.className = 'gecko-panel-header';
+        
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = panelConfig.title || panelConfig.id;
+        header.appendChild(titleSpan);
+
+        const arrow = document.createElement('span');
+        arrow.textContent = panelConfig.collapsed ? '►' : '▼';
+        header.appendChild(arrow);
+
+        const body = document.createElement('div');
+        body.className = 'gecko-panel-body' + (panelConfig.collapsed ? ' collapsed' : '');
+
+        header.addEventListener('click', () => {
+          const isCollapsed = body.classList.toggle('collapsed');
+          arrow.textContent = isCollapsed ? '►' : '▼';
+        });
+
+        panelEl.appendChild(header);
+        panelEl.appendChild(body);
+        this.panelsContainer.appendChild(panelEl);
+
+        const panelRecord = {
+          config: panelConfig,
+          element: panelEl,
+          body: body,
+          arrow: arrow
+        };
+        this.panels.push(panelRecord);
+
+        if (Array.isArray(panelConfig.controls)) {
+          panelConfig.controls.forEach(ctrl => this.addControl(panelConfig.id, ctrl));
+        }
+      }
+
+      removePanel(panelId) {
+        const idx = this.panels.findIndex(p => p.config.id === panelId);
+        if (idx !== -1) {
+          this.panels[idx].element.remove();
+          this.panels.splice(idx, 1);
+        }
+      }
+
+      expandPanel(panelId) {
+        const p = this.panels.find(p => p.config.id === panelId);
+        if (p) {
+          p.body.classList.remove('collapsed');
+          p.arrow.textContent = '▼';
+        }
+      }
+
+      collapsePanel(panelId) {
+        const p = this.panels.find(p => p.config.id === panelId);
+        if (p) {
+          p.body.classList.add('collapsed');
+          p.arrow.textContent = '►';
+        }
+      }
+
+      addControl(panelId, ctrlConfig) {
+        const panel = this.panels.find(p => p.config.id === panelId);
+        if (!panel) return;
+
+        const row = document.createElement('div');
+        row.className = 'gecko-control-row';
+
+        let ctrlObj = { config: ctrlConfig, element: row };
+
+        switch (ctrlConfig.type) {
+          case 'slider': {
+            const header = document.createElement('div');
+            header.className = 'gecko-control-header';
+            const label = document.createElement('span');
+            label.className = 'gecko-label';
+            label.textContent = ctrlConfig.label || ctrlConfig.id;
+            const valBadge = document.createElement('span');
+            valBadge.className = 'gecko-val-badge';
+
+            header.appendChild(label);
+            header.appendChild(valBadge);
+            row.appendChild(header);
+
+            const input = document.createElement('input');
+            input.type = 'range';
+            input.className = 'gecko-range';
+            input.min = ctrlConfig.min !== undefined ? ctrlConfig.min : 0;
+            input.max = ctrlConfig.max !== undefined ? ctrlConfig.max : 100;
+            input.step = ctrlConfig.step !== undefined ? ctrlConfig.step : 1;
+            input.value = ctrlConfig.value !== undefined ? ctrlConfig.value : (ctrlConfig.get ? ctrlConfig.get() : input.min);
+
+            const updateVal = (val) => {
+              valBadge.textContent = val + (ctrlConfig.unit ? ' ' + ctrlConfig.unit : '');
+            };
+            updateVal(input.value);
+
+            input.addEventListener('input', (e) => {
+              const v = parseFloat(e.target.value);
+              updateVal(v);
+              if (ctrlConfig.set) ctrlConfig.set(v);
+              this.emit('change', { id: ctrlConfig.id, value: v });
+            });
+
+            row.appendChild(input);
+
+            ctrlObj.refresh = () => {
+              if (document.activeElement === input) return;
+              if (ctrlConfig.get) {
+                const current = ctrlConfig.get();
+                if (current !== undefined && parseFloat(input.value) !== current) {
+                  input.value = current;
+                  updateVal(current);
+                }
+              }
+            };
+            break;
+          }
+
+          case 'number-input': {
+            const header = document.createElement('div');
+            header.className = 'gecko-control-header';
+            const label = document.createElement('span');
+            label.className = 'gecko-label';
+            label.textContent = ctrlConfig.label + (ctrlConfig.unit ? ' (' + ctrlConfig.unit + ')' : '');
+            header.appendChild(label);
+            row.appendChild(header);
+
+            const flexRow = document.createElement('div');
+            flexRow.className = 'gecko-flex-row';
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'gecko-input-text';
+            if (ctrlConfig.step !== undefined) input.step = ctrlConfig.step;
+            let initVal = ctrlConfig.get ? ctrlConfig.get() : (ctrlConfig.default !== undefined ? ctrlConfig.default : 1.0);
+            input.value = initVal;
+
+            let lastValidVal = initVal;
+
+            const applyVal = () => {
+              let v = parseFloat(input.value);
+              const minBound = ctrlConfig.min !== undefined ? ctrlConfig.min : 0.000001;
+              if (isNaN(v) || v < minBound) {
+                input.value = lastValidVal;
+                return;
+              }
+              lastValidVal = v;
+              if (ctrlConfig.set) ctrlConfig.set(v);
+              this.emit('change', { id: ctrlConfig.id, value: v });
+            };
+
+            input.addEventListener('blur', applyVal);
+            input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') applyVal();
+            });
+
+            flexRow.appendChild(input);
+
+            if (ctrlConfig.applyOnIcon) {
+              const btn = document.createElement('button');
+              btn.className = 'gecko-btn';
+              btn.textContent = '✓';
+              btn.addEventListener('click', applyVal);
+              flexRow.appendChild(btn);
+            }
+
+            row.appendChild(flexRow);
+
+            ctrlObj.refresh = () => {
+              if (document.activeElement === input) return;
+              if (ctrlConfig.get) {
+                const current = ctrlConfig.get();
+                if (current !== undefined && lastValidVal !== current) {
+                  lastValidVal = current;
+                  input.value = current;
+                }
+              }
+            };
+            break;
+          }
+
+          case 'vector-input': {
+            const header = document.createElement('div');
+            header.className = 'gecko-control-header';
+            const label = document.createElement('span');
+            label.className = 'gecko-label';
+            label.textContent = ctrlConfig.label + (ctrlConfig.unit ? ' (' + ctrlConfig.unit + ')' : '');
+            header.appendChild(label);
+            row.appendChild(header);
+
+            const flexRow = document.createElement('div');
+            flexRow.className = 'gecko-flex-row';
+
+            let initVec = ctrlConfig.get ? ctrlConfig.get() : (ctrlConfig.default || { x: 0, y: 0, z: 0 });
+
+            const inX = document.createElement('input');
+            inX.type = 'number';
+            inX.className = 'gecko-input-text';
+            inX.placeholder = 'X';
+            inX.value = initVec.x || 0;
+
+            const inY = document.createElement('input');
+            inY.type = 'number';
+            inY.className = 'gecko-input-text';
+            inY.placeholder = 'Y';
+            inY.value = initVec.y || 0;
+
+            const inZ = document.createElement('input');
+            inZ.type = 'number';
+            inZ.className = 'gecko-input-text';
+            inZ.placeholder = 'Z';
+            inZ.value = initVec.z || 0;
+
+            flexRow.appendChild(inX);
+            flexRow.appendChild(inY);
+            flexRow.appendChild(inZ);
+
+            const applyVec = () => {
+              const vec = {
+                x: parseFloat(inX.value) || 0,
+                y: parseFloat(inY.value) || 0,
+                z: parseFloat(inZ.value) || 0
+              };
+              if (ctrlConfig.set) ctrlConfig.set(vec);
+              this.emit('change', { id: ctrlConfig.id, value: vec });
+            };
+
+            [inX, inY, inZ].forEach(inp => {
+              inp.addEventListener('blur', applyVec);
+              inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyVec(); });
+            });
+
+            if (ctrlConfig.applyOnIcon) {
+              const btn = document.createElement('button');
+              btn.className = 'gecko-btn';
+              btn.textContent = '✓';
+              btn.addEventListener('click', applyVec);
+              flexRow.appendChild(btn);
+            }
+
+            row.appendChild(flexRow);
+
+            ctrlObj.refresh = () => {
+              if ([inX, inY, inZ].includes(document.activeElement)) return;
+              if (ctrlConfig.get) {
+                const current = ctrlConfig.get();
+                if (current) {
+                  if (parseFloat(inX.value) !== current.x) inX.value = current.x;
+                  if (parseFloat(inY.value) !== current.y) inY.value = current.y;
+                  if (parseFloat(inZ.value) !== current.z) inZ.value = current.z;
+                }
+              }
+            };
+            break;
+          }
+
+          case 'checkbox': {
+            const flexRow = document.createElement('div');
+            flexRow.className = 'gecko-flex-row';
+
+            const label = document.createElement('label');
+            label.className = 'gecko-checkbox-label';
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'gecko-checkbox';
+            input.checked = ctrlConfig.get ? !!ctrlConfig.get() : !!ctrlConfig.default;
+
+            input.addEventListener('change', (e) => {
+              const checked = e.target.checked;
+              if (ctrlConfig.set) ctrlConfig.set(checked);
+              this.emit('change', { id: ctrlConfig.id, value: checked });
+            });
+
+            const span = document.createElement('span');
+            span.className = 'gecko-label';
+            span.textContent = ctrlConfig.label || ctrlConfig.id;
+
+            label.appendChild(input);
+            label.appendChild(span);
+            flexRow.appendChild(label);
+            row.appendChild(flexRow);
+
+            ctrlObj.refresh = () => {
+              if (ctrlConfig.get) {
+                const current = !!ctrlConfig.get();
+                if (input.checked !== current) {
+                  input.checked = current;
+                }
+              }
+            };
+            break;
+          }
+
+          case 'dropdown': {
+            if (ctrlConfig.label) {
+              const header = document.createElement('div');
+              header.className = 'gecko-control-header';
+              const label = document.createElement('span');
+              label.className = 'gecko-label';
+              label.textContent = ctrlConfig.label;
+              header.appendChild(label);
+              row.appendChild(header);
+            }
+
+            const select = document.createElement('select');
+            select.className = 'gecko-select';
+
+            if (Array.isArray(ctrlConfig.options)) {
+              ctrlConfig.options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.label || opt.value;
+                select.appendChild(option);
+              });
+            }
+
+            if (ctrlConfig.default) select.value = ctrlConfig.default;
+            if (ctrlConfig.get) select.value = ctrlConfig.get();
+
+            select.addEventListener('change', (e) => {
+              const val = e.target.value;
+              if (ctrlConfig.set) ctrlConfig.set(val);
+              this.emit('change', { id: ctrlConfig.id, value: val });
+            });
+
+            row.appendChild(select);
+
+            ctrlObj.refresh = () => {
+              if (document.activeElement === select) return;
+              if (ctrlConfig.get) {
+                const current = ctrlConfig.get();
+                if (current !== undefined && select.value !== current) {
+                  select.value = current;
+                }
+              }
+            };
+            break;
+          }
+
+          case 'metrics': {
+            const grid = document.createElement('div');
+            grid.className = 'gecko-metrics-grid';
+            const fieldElsMap = new Map();
+
+            if (Array.isArray(ctrlConfig.fields)) {
+              ctrlConfig.fields.forEach(f => {
+                const mRow = document.createElement('div');
+                mRow.className = 'gecko-metric-row';
+
+                const mKey = document.createElement('span');
+                mKey.className = 'gecko-metric-key';
+                mKey.textContent = f.label || f.key;
+
+                const mVal = document.createElement('span');
+                mVal.className = 'gecko-metric-val';
+                mVal.textContent = '-';
+
+                mRow.appendChild(mKey);
+                mRow.appendChild(mVal);
+                grid.appendChild(mRow);
+
+                fieldElsMap.set(f.key, { valEl: mVal, field: f });
+              });
+            }
+
+            row.appendChild(grid);
+
+            ctrlObj.updateMetrics = (stateObj) => {
+              fieldElsMap.forEach(({ valEl, field }, key) => {
+                if (stateObj[key] !== undefined) {
+                  valEl.textContent = stateObj[key] + (field.unit ? ' ' + field.unit : '');
+                }
+              });
+            };
+            break;
+          }
+
+          case 'html': {
+            row.innerHTML = ctrlConfig.content || '';
+            break;
+          }
+
+          case 'button': {
+            const btn = document.createElement('button');
+            btn.className = 'gecko-btn';
+            btn.textContent = ctrlConfig.label || ctrlConfig.id;
+            btn.style.width = '100%';
+            btn.addEventListener('click', () => {
+              if (typeof ctrlConfig.onClick === 'function') ctrlConfig.onClick();
+            });
+            row.appendChild(btn);
+            break;
+          }
+
+          case 'separator': {
+            const sep = document.createElement('div');
+            sep.className = 'gecko-separator';
+            row.appendChild(sep);
+            break;
+          }
+
+          default:
+            break;
+        }
+
+        panel.body.appendChild(row);
+        if (ctrlConfig.id) {
+          this.controlsMap.set(ctrlConfig.id, ctrlObj);
+        }
+      }
+
+      setMetric(key, val) {
+        this.controlsMap.forEach(ctrl => {
+          if (ctrl.config.type === 'metrics' && typeof ctrl.updateMetrics === 'function') {
+            ctrl.updateMetrics({ [key]: val });
+          }
+        });
+      }
+    }
+
+    GeckoUI.VERSION = '1.0';
+    window.GeckoUI = GeckoUI;
+
+  })(window);
+  /* === END gecko-ui.js === */
+  </script>
+
+  <!-- 2. External rendering library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- 3. Simulation logic & gecko-ui initialization -->
+  <script>
+    // --- Constants & Units ---
+    const AU_KM = 149597870.7;
+    const C_KM_S = 299792.458;
+    const C_AU_DAY = (C_KM_S * 86400) / AU_KM; // ~173.1446 AU/day
+    const G_AU = 0.0002959122082855911; // AU^3 / (M_sun * day^2)
+    const KM_S_TO_AU_DAY = 86400 / AU_KM; // ~0.000577548
+
+    // Masses in M_sun
+    const M_SUN = 1.0;
+    const M_EARTH = 1.0 / 332946.0487;
+    const M_MOON = M_EARTH * 0.0123;
+    const M_JUPITER = 1.0 / 1047.34864;
+    const M_MERCURY = 1.6601e-7;
+    const M_VENUS = 2.4478e-6;
+    const M_MARS = 3.2271e-7;
+
+    // --- Solar System Presets ---
+    const SYSTEM_MODELS = {
+      'sol-earth-moon': {
+        name: 'Sol - Tierra - Luna',
+        bodies: [
+          { name: 'Sol', type: 'star', mass: M_SUN, radius_km: 696340, pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 } },
+          { name: 'Tierra', type: 'planet', mass: M_EARTH, radius_km: 6371, pos: { x: 1.0, y: 0, z: 0 }, vel: { x: 0, y: 0.017202, z: 0 } },
+          { name: 'Luna', type: 'satellite', mass: M_MOON, radius_km: 1737, pos: { x: 1.00257, y: 0, z: 0 }, vel: { x: 0, y: 0.017202 + 0.000588, z: 0 } }
+        ]
+      },
+      'inner-solar': {
+        name: 'Sistema Solar Interior',
+        bodies: [
+          { name: 'Sol', type: 'star', mass: M_SUN, radius_km: 696340, pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 } },
+          { name: 'Mercurio', type: 'planet', mass: M_MERCURY, radius_km: 2439, pos: { x: 0.387, y: 0, z: 0 }, vel: { x: 0, y: 0.0276, z: 0 } },
+          { name: 'Venus', type: 'planet', mass: M_VENUS, radius_km: 6051, pos: { x: 0.723, y: 0, z: 0 }, vel: { x: 0, y: 0.0202, z: 0 } },
+          { name: 'Tierra', type: 'planet', mass: M_EARTH, radius_km: 6371, pos: { x: 1.0, y: 0, z: 0 }, vel: { x: 0, y: 0.017202, z: 0 } },
+          { name: 'Marte', type: 'planet', mass: M_MARS, radius_km: 3389, pos: { x: 1.524, y: 0, z: 0 }, vel: { x: 0, y: 0.0139, z: 0 } },
+          { name: 'Júpiter', type: 'planet', mass: M_JUPITER, radius_km: 69911, pos: { x: 5.204, y: 0, z: 0 }, vel: { x: 0, y: 0.00757, z: 0 } }
+        ]
+      },
+      'three-body': {
+        name: 'Problema de Tres Cuerpos',
+        bodies: [
+          { name: 'Estrella A', type: 'star', mass: M_SUN, radius_km: 500000, pos: { x: -1.0, y: 0, z: 0 }, vel: { x: 0, y: 0.01, z: 0 } },
+          { name: 'Estrella B', type: 'star', mass: M_SUN, radius_km: 500000, pos: { x: 1.0, y: 0, z: 0 }, vel: { x: 0, y: -0.01, z: 0 } },
+          { name: 'Planeta C', type: 'planet', mass: M_EARTH * 10, radius_km: 20000, pos: { x: 0, y: 1.5, z: 0 }, vel: { x: 0.012, y: 0, z: 0 } }
+        ]
+      }
+    };
+
+    // --- Physics Simulation Classes ---
+    class CelestialBody {
+      constructor(data) {
+        this.name = data.name;
+        this.type = data.type; // 'star' | 'planet' | 'satellite'
+        this.mass = data.mass;
+        this.radius_km = data.radius_km;
+        this.pos = new THREE.Vector3(data.pos.x, data.pos.y, data.pos.z);
+        this.vel = new THREE.Vector3(data.vel.x, data.vel.y, data.vel.z);
+        this.accelMap = new Map();
+        this.isInitialized = false;
+        this.theoreticalDiff = 0; // in 10,000 km
+        this.mesh = null;
+        this.traceLine = null;
+        this.tracePoints = [];
+      }
+    }
+
+    class IdealBody {
+      constructor(celestialBody) {
+        this.name = celestialBody.name;
+        this.mass = celestialBody.mass;
+        this.pos = celestialBody.pos.clone();
+        this.vel = celestialBody.vel.clone();
+        this.accelMap = new Map();
+        this.mesh = null;
+        this.traceLine = null;
+        this.tracePoints = [];
+      }
+    }
+
+    class GravitationalSphere {
+      constructor(originBody) {
+        this.originName = originBody.name;
+        this.originPos = originBody.pos.clone();
+        this.mass = originBody.mass;
+        this.radius = 0.0001; // AU
+        this.registered = new Set();
+        this.processed = false;
+      }
+    }
+
+    class GravitySim {
+      constructor() {
+        this.gravitySpeed = 1.0; // multiple of c
+        this.radiationPeriod = 1.0; // days
+        this.systemVelocity = { x: 0.0, y: 0.0, z: 250.0 }; // km/s
+        this.traceMode = false;
+        this.detailsMode = false;
+        this.comparisonMode = false;
+
+        this.selectedSystem = 'sol-earth-moon';
+        this.celestialBodies = [];
+        this.idealBodies = [];
+        this.spheres = [];
+        this.days = 0;
+        this.isInitializing = true;
+        this.baseRefName = '';
+
+        this.initScene();
+        this.loadSystem(this.selectedSystem);
+      }
+
+      initScene() {
+        const canvas = document.getElementById('c');
+        this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        this.renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x090a0f);
+
+        this.camera = new THREE.PerspectiveCamera(45, (window.innerWidth - 320) / window.innerHeight, 0.1, 5000);
+        this.camera.position.set(0, 0, 100);
+        this.camera.lookAt(0, 0, 0);
+
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        this.scene.add(ambientLight);
+
+        window.addEventListener('resize', () => {
+          this.renderer.setSize(window.innerWidth - 320, window.innerHeight);
+          this.camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+          this.camera.updateProjectionMatrix();
+        });
+      }
+
+      loadSystem(modelKey) {
+        this.selectedSystem = modelKey;
+        const model = SYSTEM_MODELS[modelKey] || SYSTEM_MODELS['sol-earth-moon'];
+
+        // Clear existing meshes
+        this.celestialBodies.forEach(b => {
+          if (b.mesh) this.scene.remove(b.mesh);
+          if (b.traceLine) this.scene.remove(b.traceLine);
+        });
+        this.idealBodies.forEach(b => {
+          if (b.mesh) this.scene.remove(b.mesh);
+          if (b.traceLine) this.scene.remove(b.traceLine);
+        });
+
+        this.celestialBodies = model.bodies.map(d => new CelestialBody(d));
+        this.idealBodies = this.celestialBodies.map(cb => new IdealBody(cb));
+        this.spheres = [];
+        this.days = 0;
+        this.isInitializing = true;
+
+        // Find Base Reference (most massive body)
+        let maxMass = -1;
+        this.baseRefName = this.celestialBodies[0].name;
+        this.celestialBodies.forEach(b => {
+          if (b.mass > maxMass) {
+            maxMass = b.mass;
+            this.baseRefName = b.name;
+          }
+        });
+
+        // Compute proportion factor ppr
+        let maxDist = 0.001;
+        const baseRef = this.celestialBodies.find(b => b.name === this.baseRefName);
+        this.celestialBodies.forEach(b => {
+          const d = b.pos.distanceTo(baseRef.pos);
+          if (d > maxDist) maxDist = d;
+        });
+        this.ppr = 40.0 / maxDist; // scale so system spans ~80 units in scene
+
+        // Create 3D meshes
+        this.celestialBodies.forEach(b => {
+          let color = 0x3399ff;
+          let size = 1.2;
+          if (b.type === 'star') {
+            color = 0xffcc00;
+            size = 3.5;
+            const light = new THREE.PointLight(0xffffff, 2, 2000);
+            b.meshLight = light;
+            this.scene.add(light);
+          } else if (b.type === 'satellite') {
+            color = 0xdddddd;
+            size = 0.6;
+          }
+
+          const geom = new THREE.SphereGeometry(size, 24, 24);
+          const mat = new THREE.MeshStandardMaterial({
+            color,
+            emissive: b.type === 'star' ? 0xffaa00 : 0x000000,
+            roughness: 0.4
+          });
+          b.mesh = new THREE.Mesh(geom, mat);
+          this.scene.add(b.mesh);
+        });
+
+        // Create meshes for Ideal Bodies (red wireframe)
+        this.idealBodies.forEach(b => {
+          const geom = new THREE.SphereGeometry(1.0, 12, 12);
+          const mat = new THREE.MeshBasicMaterial({ color: 0xff3344, wireframe: true });
+          b.mesh = new THREE.Mesh(geom, mat);
+          b.mesh.visible = false;
+          this.scene.add(b.mesh);
+        });
+
+        // Initial camera placement
+        this.camera.position.set(0, 0, Math.max(80, maxDist * this.ppr * 1.5));
+        this.camera.lookAt(0, 0, 0);
+
+        // Run initial phase to prime gravitational spheres
+        this.runInitialPhase();
+      }
+
+      runInitialPhase() {
+        const overlay = document.getElementById('init-overlay');
+        if (overlay) overlay.style.display = 'block';
+
+        let safetyCounter = 0;
+        while (this.isInitializing && safetyCounter < 2000) {
+          safetyCounter++;
+          this.stepPhysics(true);
+          const allInit = this.celestialBodies.every(b => b.isInitialized);
+          if (allInit) {
+            this.isInitializing = false;
+          }
+        }
+
+        if (overlay) overlay.style.display = 'none';
+        console.log(`[GECKO] Initial Phase completed in ${safetyCounter} cycles.`);
+      }
+
+      stepPhysics(isInitPhase = false) {
+        const speedC_AU = this.gravitySpeed * C_AU_DAY;
+        const radPeriod = this.radiationPeriod;
+        const sysVelAUDay = new THREE.Vector3(
+          this.systemVelocity.x * KM_S_TO_AU_DAY,
+          this.systemVelocity.y * KM_S_TO_AU_DAY,
+          this.systemVelocity.z * KM_S_TO_AU_DAY
+        );
+
+        // 1. Clear acceleration collections
+        this.celestialBodies.forEach(b => b.accelMap.clear());
+        this.idealBodies.forEach(b => b.accelMap.clear());
+
+        // 2. Expand gravitational spheres
+        this.spheres.forEach(s => {
+          s.radius += speedC_AU * radPeriod;
+        });
+
+        // 3. Celestial bodies emit new spheres
+        this.celestialBodies.forEach(b => {
+          this.spheres.push(new GravitationalSphere(b));
+        });
+
+        // 4. Spheres check entering celestial bodies
+        this.spheres.forEach(s => {
+          if (s.processed) return;
+
+          this.celestialBodies.forEach(b => {
+            if (s.registered.has(b.name)) return;
+
+            const dist = b.pos.distanceTo(s.originPos);
+            if (dist <= s.radius) {
+              s.registered.add(b.name);
+
+              if (b.name !== s.originName && dist > 1e-8) {
+                const accelMag = (G_AU * s.mass) / (dist * dist);
+                const accelVec = s.originPos.clone().sub(b.pos).normalize().multiplyScalar(accelMag);
+                b.accelMap.set(s.originName, accelVec);
+              }
+            }
+          });
+
+          // Check if sphere registered all celestial bodies
+          if (s.registered.size >= this.celestialBodies.length) {
+            s.processed = true;
+
+            const originBody = this.celestialBodies.find(cb => cb.name === s.originName);
+            if (originBody && !originBody.isInitialized) {
+              originBody.isInitialized = true;
+            }
+          }
+        });
+
+        // 5. Ideal bodies calculate Newtonian pairwise acceleration
+        for (let i = 0; i < this.idealBodies.length; i++) {
+          for (let j = 0; j < this.idealBodies.length; j++) {
+            if (i === j) continue;
+            const b1 = this.idealBodies[i];
+            const b2 = this.idealBodies[j];
+            const dist = b1.pos.distanceTo(b2.pos);
+            if (dist > 1e-8) {
+              const accelMag = (G_AU * b2.mass) / (dist * dist);
+              const accelVec = b2.pos.clone().sub(b1.pos).normalize().multiplyScalar(accelMag);
+              b1.accelMap.set(b2.name, accelVec);
+            }
+          }
+        }
+
+        // 6. Integrate Ideal Bodies position & velocity
+        this.idealBodies.forEach(ib => {
+          const totalAccel = new THREE.Vector3(0, 0, 0);
+          ib.accelMap.forEach(a => totalAccel.add(a));
+          ib.vel.add(totalAccel.clone().multiplyScalar(radPeriod));
+          const totalVel = ib.vel.clone(); // In init phase, system velocity is 0
+          if (!isInitPhase) totalVel.add(sysVelAUDay);
+          ib.pos.add(totalVel.clone().multiplyScalar(radPeriod));
+        });
+
+        // 7. Integrate Celestial Bodies position & velocity
+        this.celestialBodies.forEach(cb => {
+          if (isInitPhase) {
+            const pairedIdeal = this.idealBodies.find(ib => ib.name === cb.name);
+            if (pairedIdeal) cb.pos.copy(pairedIdeal.pos);
+          } else {
+            const totalAccel = new THREE.Vector3(0, 0, 0);
+            cb.accelMap.forEach(a => totalAccel.add(a));
+            cb.vel.add(totalAccel.clone().multiplyScalar(radPeriod));
+            const totalVel = cb.vel.clone().add(sysVelAUDay);
+            cb.pos.add(totalVel.clone().multiplyScalar(radPeriod));
+
+            // Theoretical difference calculation
+            const pairedIdeal = this.idealBodies.find(ib => ib.name === cb.name);
+            if (pairedIdeal) {
+              const distAU = cb.pos.distanceTo(pairedIdeal.pos);
+              cb.theoreticalDiff = distAU * 14959.78707; // 1 AU in tens of thousands of km
+            }
+          }
+        });
+
+        // 8. Prune processed spheres unless trace mode
+        if (!this.traceMode) {
+          this.spheres = this.spheres.filter(s => !s.processed);
+        }
+
+        this.days += radPeriod;
+      }
+
+      step(dt) {
+        this.stepPhysics(false);
+        this.updateVisuals();
+      }
+
+      updateVisuals() {
+        const baseRef = this.celestialBodies.find(b => b.name === this.baseRefName) || this.celestialBodies[0];
+
+        this.celestialBodies.forEach(b => {
+          if (!b.mesh) return;
+
+          // Relative scene position
+          const relPos = b.pos.clone().sub(baseRef.pos).multiplyScalar(this.ppr);
+          b.mesh.position.copy(relPos);
+
+          if (b.meshLight) {
+            b.meshLight.position.copy(relPos);
+          }
+
+          // Trajectory traces
+          if (this.traceMode) {
+            if (!b.traceLine) {
+              const geom = new THREE.BufferGeometry();
+              const mat = new THREE.LineBasicMaterial({ color: b.mesh.material.color });
+              b.traceLine = new THREE.Line(geom, mat);
+              this.scene.add(b.traceLine);
+            }
+            b.tracePoints.push(relPos.clone());
+            if (b.tracePoints.length > 300) b.tracePoints.shift();
+
+            const positions = new Float32Array(b.tracePoints.length * 3);
+            b.tracePoints.forEach((p, idx) => {
+              positions[idx * 3] = p.x;
+              positions[idx * 3 + 1] = p.y;
+              positions[idx * 3 + 2] = p.z;
+            });
+            b.traceLine.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            b.traceLine.visible = true;
+          } else if (b.traceLine) {
+            b.traceLine.visible = false;
+          }
+        });
+
+        // Ideal Bodies rendering (Comparison mode)
+        this.idealBodies.forEach(ib => {
+          if (!ib.mesh) return;
+
+          if (this.comparisonMode) {
+            const relPos = ib.pos.clone().sub(baseRef.pos).multiplyScalar(this.ppr);
+            relPos.x += 0.5; // slight visual offset
+            ib.mesh.position.copy(relPos);
+            ib.mesh.visible = true;
+          } else {
+            ib.mesh.visible = false;
+          }
+        });
+      }
+
+      reset() {
+        this.loadSystem(this.selectedSystem);
+      }
+    }
+
+    // Instantiate simulation
+    const sim = new GravitySim();
+
+    // Camera helper functions
+    const camControl = {
+      zoom: (delta) => {
+        sim.camera.position.multiplyScalar(1 + delta);
+        sim.camera.lookAt(0, 0, 0);
+      },
+      rotateX: (deg) => {
+        const rad = (deg * Math.PI) / 180;
+        sim.camera.position.applyAxisAngle(new THREE.Vector3(1, 0, 0), rad);
+        sim.camera.lookAt(0, 0, 0);
+      },
+      rotateZ: (deg) => {
+        const rad = (deg * Math.PI) / 180;
+        sim.camera.position.applyAxisAngle(new THREE.Vector3(0, 0, 1), rad);
+        sim.camera.lookAt(0, 0, 0);
+      }
+    };
+
+    // --- Initialize GeckoUI ---
+    const ui = new GeckoUI({
+      canvas: document.getElementById('c'),
+      language: 'es',
+      title: 'Gravedad más allá de la luz',
+      accentColor: '#00e5ff',
+
+      getState: () => {
+        const mainBody = sim.celestialBodies.find(b => b.name === 'Tierra') || sim.celestialBodies[1] || sim.celestialBodies[0];
+        return {
+          bodies: sim.celestialBodies.length,
+          spheres: sim.spheres.length,
+          elapsedDays: sim.days.toFixed(1),
+          elapsedYears: (sim.days / 365.25).toFixed(2),
+          targetDiff: mainBody ? mainBody.theoreticalDiff.toFixed(2) : '0.00'
+        };
+      },
+
+      onExport: () => ({
+        selectedSystem: sim.selectedSystem,
+        gravitySpeed: sim.gravitySpeed,
+        radiationPeriod: sim.radiationPeriod,
+        systemVelocity: sim.systemVelocity,
+        traceMode: sim.traceMode,
+        detailsMode: sim.detailsMode,
+        comparisonMode: sim.comparisonMode,
+        days: sim.days,
+        celestialBodies: sim.celestialBodies.map(b => ({
+          name: b.name,
+          type: b.type,
+          mass: b.mass,
+          pos: { x: b.pos.x, y: b.pos.y, z: b.pos.z },
+          vel: { x: b.vel.x, y: b.vel.y, z: b.vel.z }
+        }))
+      }),
+
+      onImport: (state) => {
+        if (!state) return;
+        if (state.gravitySpeed) sim.gravitySpeed = state.gravitySpeed;
+        if (state.radiationPeriod) sim.radiationPeriod = state.radiationPeriod;
+        if (state.systemVelocity) sim.systemVelocity = state.systemVelocity;
+        if (state.traceMode !== undefined) sim.traceMode = state.traceMode;
+        if (state.detailsMode !== undefined) sim.detailsMode = state.detailsMode;
+        if (state.comparisonMode !== undefined) sim.comparisonMode = state.comparisonMode;
+        if (state.selectedSystem) sim.loadSystem(state.selectedSystem);
+      },
+
+      onReset: () => sim.reset(),
+
+      camera: {
+        onZoomIn: () => camControl.zoom(-0.1),
+        onZoomOut: () => camControl.zoom(+0.1),
+        onRotateXPos: () => camControl.rotateX(+5),
+        onRotateXNeg: () => camControl.rotateX(-5),
+        onRotateZPos: () => camControl.rotateZ(+5),
+        onRotateZNeg: () => camControl.rotateZ(-5),
+        getCameraInfo: () => ({
+          dist: sim.camera.position.length().toFixed(1),
+          rotX: Math.round((sim.camera.rotation.x * 180) / Math.PI) + '°',
+          rotZ: Math.round((sim.camera.rotation.z * 180) / Math.PI) + '°'
+        })
+      },
+
+      debugConsole: true,
+      debugConsoleLines: 20,
+
+      panels: [
+        {
+          id: 'models',
+          title: 'Modelos de sistema solar',
+          collapsed: false,
+          controls: [
+            {
+              type: 'dropdown',
+              id: 'system-select',
+              label: 'Sistema Total Elegido',
+              options: [
+                { value: 'sol-earth-moon', label: '1. Sol - Tierra - Luna' },
+                { value: 'inner-solar', label: '2. Sistema Solar Interior' },
+                { value: 'three-body', label: '3. Problema de Tres Cuerpos' }
+              ],
+              default: 'sol-earth-moon',
+              get: () => sim.selectedSystem,
+              set: (v) => sim.loadSystem(v)
+            }
+          ]
+        },
+        {
+          id: 'config',
+          title: 'Configuración del simulador',
+          collapsed: false,
+          controls: [
+            {
+              type: 'vector-input',
+              id: 'sys-vel',
+              label: 'Velocidad del Sistema Total',
+              unit: 'km/s',
+              default: { x: 0.0, y: 0.0, z: 250.0 },
+              get: () => sim.systemVelocity,
+              set: (v) => { sim.systemVelocity = v; },
+              applyOnIcon: true
+            },
+            {
+              type: 'number-input',
+              id: 'grav-speed',
+              label: 'Velocidad de gravedad',
+              unit: 'C',
+              default: 1.0,
+              min: 0.001,
+              get: () => sim.gravitySpeed,
+              set: (v) => { sim.gravitySpeed = v; },
+              applyOnIcon: true
+            },
+            {
+              type: 'number-input',
+              id: 'rad-period',
+              label: 'Periodo de radiación',
+              unit: 'días',
+              default: 1.0,
+              min: 0.001,
+              get: () => sim.radiationPeriod,
+              set: (v) => { sim.radiationPeriod = v; },
+              applyOnIcon: true
+            },
+            { type: 'separator' },
+            {
+              type: 'checkbox',
+              id: 'chk-trace',
+              label: 'Trazo (Lineas de trayectoria)',
+              get: () => sim.traceMode,
+              set: (v) => { sim.traceMode = v; }
+            },
+            {
+              type: 'checkbox',
+              id: 'chk-details',
+              label: 'Detalles (Telemetría)',
+              get: () => sim.detailsMode,
+              set: (v) => { sim.detailsMode = v; }
+            },
+            {
+              type: 'checkbox',
+              id: 'chk-comp',
+              label: 'Comparación (Cuerpos ideales)',
+              get: () => sim.comparisonMode,
+              set: (v) => { sim.comparisonMode = v; }
+            }
+          ]
+        },
+        {
+          id: 'data-panel',
+          title: 'Telemetría y Datos',
+          collapsed: true,
+          controls: [
+            {
+              type: 'metrics',
+              id: 'telemetry-metrics',
+              label: 'Telemetría',
+              fields: [
+                { key: 'bodies', label: 'Cuerpos Celestes', unit: '' },
+                { key: 'spheres', label: 'Esferas Activas', unit: '' },
+                { key: 'elapsedDays', label: 'Días Transcurridos', unit: 'd' },
+                { key: 'elapsedYears', label: 'Años Transcurridos', unit: 'años' },
+                { key: 'targetDiff', label: 'Dif. Teórica Tierra', unit: '10k km' }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'explanation',
+          title: 'Explicación del funcionamiento',
+          collapsed: true,
+          controls: [
+            {
+              type: 'html',
+              content: `
+                <p style="margin:0 0 6px 0;">Este programa simula la evolución de un sistema solar bajo la hipótesis de que la <strong>velocidad de propagación de la gravedad</strong> es finita y configurable (en múltiplos de la velocidad de la luz <em>c</em>).</p>
+                <p style="margin:0 0 6px 0;">Cada cuerpo celeste emite periódicamente <strong>esferas gravitacionales</strong> que se expanden en el espacio. Las fuerzas gravitatorias actúan únicamente cuando las esferas alcanzan a otros cuerpos.</p>
+                <p style="margin:0;">El modo <em>Comparación</em> permite contrastar las posiciones reales frente a cuerpos ideales sometidos a gravedad instantánea newtoniana.</p>
+              `
+            }
+          ]
+        }
+      ]
+    });
+
+    // Wire simulation frame tick to GeckoUI
+    ui.on('tick', (dt) => {
+      sim.step(dt);
+      sim.renderer.render(sim.scene, sim.camera);
+    });
+
+    console.log('[GECKO] Simulator initialized successfully.');
+  </script>
+</body>
+</html>
