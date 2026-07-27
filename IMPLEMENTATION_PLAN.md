@@ -200,10 +200,11 @@ Jest unit tests for `i18n.ts` and `api/client.ts` (mocked fetch).
 
 File: `backend/src/gecko/services/knowledge.py`
 
-- Parse YAML frontmatter from all `knowledge/strategies/*.md` and `knowledge/examples/**/*.md`
+- Parse YAML frontmatter and contents from `knowledge/strategies/*.md`, `knowledge/examples/**/*.md`, and `knowledge/agents/*.md`
 - `search_strategies(query)`: match against `aliases`, `domains`, `tags` (substring, case-insensitive)
 - `search_examples(strategies)`: find examples whose `strategies_used` overlap
-- Returns top 2-3 of each with full file content
+- `search_agents(query)`: search reusable agent catalogs in `knowledge/agents/` relevant to domain/concept
+- Returns matching strategies, examples, and agent definitions with full content
 
 ### 4.2 — Gemini client
 
@@ -219,7 +220,8 @@ File: `backend/src/gecko/services/gemini.py`
 async def step1_concept_modeling(user_request: str) -> ConceptProposal:
     strategies = knowledge.search_strategies(user_request)
     examples   = knowledge.search_examples([s.name for s in strategies])
-    prompt     = build_step1_prompt(user_request, strategies, examples, spec_schema)
+    agents     = knowledge.search_agents(user_request)
+    prompt     = build_step1_prompt(user_request, strategies, examples, agents, spec_schema)
     raw        = await gemini.generate(prompt, system=GECKO_SYSTEM_PROMPT)
     return parse_proposal(raw)
 ```
@@ -450,6 +452,8 @@ gecko/
   knowledge/
     strategies/
     examples/
+    agents/
+      physics-agents.md
     schema/
       gecko-ui.js              <- implemented in Phase 1
       gecko-ui-spec.md

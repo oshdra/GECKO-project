@@ -203,7 +203,7 @@ The AI selects the rendering library per simulator based on concept complexity:
 
 ## Knowledge System
 
-GECKO uses a three-layer knowledge system to feed AI-relevant context during simulator generation. All knowledge files live in the `knowledge/` directory:
+GECKO uses a multi-layer knowledge system to feed AI-relevant context during simulator generation. All knowledge files live in the `knowledge/` directory:
 
 ```
 knowledge/
@@ -213,7 +213,8 @@ knowledge/
     biology/
     economics/
     mathematics/
-  schema/               ← Output contracts and requirements (Layer 3)
+  agents/               ← Reusable agent definition library by domain (Layer 3)
+  schema/               ← Output contracts and requirements (Layer 4)
 ```
 
 ### Layer 1: Modeling Strategies
@@ -233,7 +234,14 @@ Current examples:
 - **Rotation of Rigid Bodies** (`physics/rigid-body-rotation.md`) — Strategy: `multi-body-constraint`.
 - **Physics of Ping Pong** (`physics/ping-pong-physics.md`) — Strategy: `collision-response`.
 
-### Layer 3: Schema & Requirements
+### Layer 3: Reusable Agent Library
+
+Categorized catalog of reusable agent archetypes (`knowledge/agents/`), defining standard attributes, behaviors, collision rules, and physics models (e.g. finite-speed gravity spheres, Newtonian attractors, paddles, balls, rigid body nodes, force points). These provide modular building blocks for AI agents to compose into new simulator specs.
+
+Current agent catalogs:
+- **Physics Agents** (`knowledge/agents/physics-agents.md`) — finite-speed gravity spheres, Newtonian attractors, ping-pong balls & paddles, rigid body nodes, and thrusters.
+
+### Layer 4: Schema & Requirements
 
 - `gecko-spec.schema.yaml` — the formal YAML schema every simulator spec must conform to.
 - `simulator-requirements.md` — universal rules for all generated simulators (controls, state display, export/import, visual aids, responsive layout).
@@ -242,9 +250,8 @@ Current examples:
 
 During Step 1 (Concept Modeling), the backend:
 1. Searches strategies by `aliases`, `domains`, and semantic similarity to the user's request
-2. Retrieves the top 2–3 matching strategies
-3. Retrieves 2–3 worked examples linked to those strategies
-4. Assembles the LLM prompt: system instructions + strategies + examples + spec schema + user request
+2. Retrieves matching strategies, worked examples, and domain agent definitions from `knowledge/agents/`
+3. Assembles the LLM prompt: system instructions + strategies + examples + agent definitions + spec schema + user request
 
 ---
 

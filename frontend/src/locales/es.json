@@ -1,0 +1,49 @@
+{
+  "app": {
+    "title": "GECKO",
+    "subtitle": "Generador de Exploradores de Conceptos Copilot",
+    "tagline": "Transforma conceptos complejos en simuladores web interactivos"
+  },
+  "nav": {
+    "home": "Biblioteca",
+    "settings": "Configuración",
+    "langToggle": "EN"
+  },
+  "home": {
+    "inputPlaceholder": "Describe un concepto para explorar (ej. 'Entrelazamiento cuántico', 'Resonancia orbital')...",
+    "generateBtn": "Generar Simulador",
+    "filterAll": "Todos los Dominios",
+    "searchSimulators": "Buscar simuladores...",
+    "emptyState": "No se encontraron simuladores con ese criterio.",
+    "versionCount": "{count} versiones",
+    "versionSingle": "1 versión",
+    "lastModified": "Actualizado {date}",
+    "openSimulator": "Abrir Simulador"
+  },
+  "detail": {
+    "backBtn": "← Volver a la Biblioteca",
+    "versions": "Versiones",
+    "versionSelect": "Versión {version}",
+    "openInBrowser": "Abrir en Pantalla Completa ↗",
+    "detailsHeader": "Detalles del Simulador",
+    "concept": "Concepto",
+    "domain": "Dominio",
+    "tags": "Etiquetas",
+    "lastUpdated": "Última Actualización"
+  },
+  "settings": {
+    "title": "Configuración de GECKO",
+    "apiKeyLabel": "Clave API de Gemini",
+    "apiKeyPlaceholder": "Ingresa tu clave API de Gemini (AIzaSy...)",
+    "apiKeyHelp": "Tu clave API se almacena localmente en la configuración del backend y nunca se comparte.",
+    "saveBtn": "Guardar Configuración",
+    "savedMsg": "¡Configuración guardada exitosamente!",
+    "errorMsg": "Error al guardar la configuración.",
+    "closeBtn": "Cerrar"
+  },
+  "comingSoon": {
+    "title": "Flujo de Generación con IA",
+    "message": "¡El flujo de generación con IA estará disponible en la Fase 4! El agente de modelado conceptual creará la especificación y el diseño interactivo.",
+    "close": "Entendido"
+  }
+}

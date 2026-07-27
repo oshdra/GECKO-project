@@ -1,0 +1,49 @@
+{
+  "app": {
+    "title": "GECKO",
+    "subtitle": "Generator of Explorers of Concepts Copilot",
+    "tagline": "Transform complex concepts into interactive web simulators"
+  },
+  "nav": {
+    "home": "Library",
+    "settings": "Settings",
+    "langToggle": "ES"
+  },
+  "home": {
+    "inputPlaceholder": "Describe a concept to explore (e.g., 'Quantum Entanglement', 'Orbital Resonance')...",
+    "generateBtn": "Generate Simulator",
+    "filterAll": "All Domains",
+    "searchSimulators": "Search simulators...",
+    "emptyState": "No simulators found matching your criteria.",
+    "versionCount": "{count} versions",
+    "versionSingle": "1 version",
+    "lastModified": "Updated {date}",
+    "openSimulator": "Open Simulator"
+  },
+  "detail": {
+    "backBtn": "← Back to Library",
+    "versions": "Versions",
+    "versionSelect": "Version {version}",
+    "openInBrowser": "Open Fullscreen ↗",
+    "detailsHeader": "Simulator Details",
+    "concept": "Concept",
+    "domain": "Domain",
+    "tags": "Tags",
+    "lastUpdated": "Last Updated"
+  },
+  "settings": {
+    "title": "GECKO Settings",
+    "apiKeyLabel": "Gemini API Key",
+    "apiKeyPlaceholder": "Enter your Gemini API key (AIzaSy...)",
+    "apiKeyHelp": "Your API key is stored locally in backend environment/settings and never shared.",
+    "saveBtn": "Save Settings",
+    "savedMsg": "Settings saved successfully!",
+    "errorMsg": "Failed to save settings.",
+    "closeBtn": "Close"
+  },
+  "comingSoon": {
+    "title": "AI Generation Pipeline",
+    "message": "AI Generation Pipeline coming in Phase 4! The backend concept modeling agent will create your simulator spec and interactive layout.",
+    "close": "Got it"
+  }
+}
