@@ -4,12 +4,12 @@ import { createProgressStepper } from './ProgressStepper';
 export class ProposalCard {
   private container: HTMLElement;
   private proposal: ConceptProposal;
-  private onApprove: () => void;
+  private onApprove: (proposal: ConceptProposal) => void;
   private onModify: () => void;
 
   constructor(
     proposal: ConceptProposal,
-    onApprove: () => void,
+    onApprove: (proposal: ConceptProposal) => void,
     onModify: () => void
   ) {
     this.container = document.createElement('div');
@@ -109,8 +109,9 @@ export class ProposalCard {
       </div>
     `;
 
-    cardSurface.querySelector('.approve-btn')?.addEventListener('click', () => this.onApprove());
+    cardSurface.querySelector('.approve-btn')?.addEventListener('click', () => this.onApprove(this.proposal));
     cardSurface.querySelector('.modify-btn')?.addEventListener('click', () => this.onModify());
+
 
     this.container.appendChild(cardSurface);
     return this.container;

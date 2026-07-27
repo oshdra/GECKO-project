@@ -73,6 +73,10 @@ export interface GenerateEvent {
   status: 'running' | 'done' | 'error';
   message?: string;
   proposal?: ConceptProposal;
+  viz_plan?: Record<string, any>;
+  physics_model?: Record<string, any>;
+  simulator_id?: string;
+  version?: number;
   error?: string;
 }
 
@@ -120,22 +124,10 @@ export function getSimulatorHtmlUrl(id: string, version: number): string {
   return `${API_BASE}/simulators/${encodeURIComponent(id)}/html/${version}`;
 }
 
-export async function generateProposalSse(
-  concept: string,
+async function readSseStream(
+  res: Response,
   onEvent: (event: GenerateEvent) => void
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/generate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ concept }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Generation endpoint returned HTTP ${res.status}`);
-  }
-
   const reader = res.body?.getReader();
   if (!reader) {
     throw new Error('Readable stream not available on response body');
@@ -168,3 +160,43 @@ export async function generateProposalSse(
     }
   }
 }
+
+export async function generateProposalSse(
+  concept: string,
+  onEvent: (event: GenerateEvent) => void
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ concept }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Generation endpoint returned HTTP ${res.status}`);
+  }
+
+  await readSseStream(res, onEvent);
+}
+
+export async function generateFullSimulatorSse(
+  proposal: ConceptProposal,
+  concept: string,
+  onEvent: (event: GenerateEvent) => void
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/generate/execute`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ proposal, concept }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Execute endpoint returned HTTP ${res.status}`);
+  }
+
+  await readSseStream(res, onEvent);
+}
+

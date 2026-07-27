@@ -1,4 +1,4 @@
-import { fetchSimulators, generateProposalSse, SimulatorSummary, ConceptProposal } from '../api/client';
+import { fetchSimulators, generateProposalSse, generateFullSimulatorSse, SimulatorSummary, ConceptProposal } from '../api/client';
 import { NewSimulatorInput } from '../components/NewSimulatorInput';
 import { SimulatorGrid } from '../components/SimulatorGrid';
 import { ProposalCard } from '../components/ProposalCard';
@@ -11,6 +11,7 @@ export class HomePage {
   private proposalContainer: HTMLElement;
   private mainGridWrapper: HTMLElement;
   private currentProposal: ConceptProposal | null = null;
+  private currentConcept: string = '';
 
   constructor(onSelectSimulator: (id: string) => void) {
     this.container = document.createElement('div');
@@ -40,6 +41,7 @@ export class HomePage {
   }
 
   private async handleGenerate(concept: string) {
+    this.currentConcept = concept;
     this.proposalContainer.innerHTML = '';
     const loadingStepper = createProgressStepper(1, { 1: 'running', 2: 'pending', 3: 'pending', 4: 'pending' });
     
@@ -75,8 +77,8 @@ export class HomePage {
 
     const card = new ProposalCard(
       this.currentProposal,
-      () => {
-        alert("Phase 5 deliverable: Full HTML generation starts after proposal approval!");
+      (approvedProposal) => {
+        this.handleApproveProposal(approvedProposal);
       },
       () => {
         const input = document.querySelector<HTMLInputElement>('.prompt-input');
@@ -87,6 +89,72 @@ export class HomePage {
     );
 
     this.proposalContainer.appendChild(card.render());
+  }
+
+  private async handleApproveProposal(proposal: ConceptProposal) {
+    this.proposalContainer.innerHTML = '';
+
+    const stepStates: Record<number, 'pending' | 'running' | 'done' | 'error'> = {
+      1: 'done',
+      2: 'pending',
+      3: 'pending',
+      4: 'pending',
+    };
+
+    const cardContainer = document.createElement('div');
+    cardContainer.className = 'proposal-card-container';
+
+    let stepperElem = createProgressStepper(2, stepStates);
+    cardContainer.appendChild(stepperElem);
+
+    const statusMsg = document.createElement('div');
+    statusMsg.className = 'empty-state';
+    statusMsg.innerHTML = `<p>Designing visualization layout for <strong>"${escapeHtml(proposal.concept_name)}"</strong>...</p>`;
+    cardContainer.appendChild(statusMsg);
+
+    this.proposalContainer.appendChild(cardContainer);
+    cardContainer.scrollIntoView({ behavior: 'smooth' });
+
+    const updateStepper = (currentStep: number) => {
+      stepperElem.replaceWith(createProgressStepper(currentStep, stepStates));
+      stepperElem = cardContainer.querySelector('.progress-stepper') as HTMLElement;
+    };
+
+    try {
+      await generateFullSimulatorSse(proposal, this.currentConcept, async (event) => {
+        if (event.status === 'running') {
+          stepStates[event.step] = 'running';
+          updateStepper(event.step);
+          if (event.message) {
+            statusMsg.innerHTML = `<p>${escapeHtml(event.message)}</p>`;
+          }
+        } else if (event.status === 'done') {
+          stepStates[event.step] = 'done';
+          updateStepper(event.step);
+
+          if (event.step === 4 && event.simulator_id) {
+            statusMsg.innerHTML = `
+              <div style="text-align: center; padding: 1rem 0;">
+                <h3 style="color: var(--accent-emerald); margin-bottom: 0.5rem;">🎉 Simulator Generated Successfully!</h3>
+                <p style="margin-bottom: 1.5rem;">Saved to <code>simulators/${escapeHtml(event.simulator_id)}/v1.html</code></p>
+                <button class="btn btn-primary open-sim-btn">Open Simulator Preview →</button>
+              </div>
+            `;
+            await this.loadData();
+
+            statusMsg.querySelector('.open-sim-btn')?.addEventListener('click', () => {
+              this.onSelectSimulator(event.simulator_id!);
+            });
+          }
+        } else if (event.status === 'error') {
+          stepStates[event.step] = 'error';
+          updateStepper(event.step);
+          statusMsg.innerHTML = `<p style="color: var(--accent-rose)">Generation error: ${escapeHtml(event.error || 'Failed to complete step')}</p>`;
+        }
+      });
+    } catch (err: any) {
+      statusMsg.innerHTML = `<p style="color: var(--accent-rose)">Connection error during generation: ${escapeHtml(err?.message || String(err))}</p>`;
+    }
   }
 
   public async loadData() {
@@ -104,3 +172,4 @@ function escapeHtml(str: string): string {
   div.textContent = str;
   return div.innerHTML;
 }
+
