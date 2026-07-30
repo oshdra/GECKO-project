@@ -1,4 +1,6 @@
-import { SimulatorDetailData, getSimulatorHtmlUrl } from '../api/client';
+import { SimulatorDetailData, getSimulatorHtmlUrl, fetchSimulator } from '../api/client';
+import { ChatPanel } from './ChatPanel';
+import { VersionTimelineModal } from './VersionTimelineModal';
 import { t } from '../i18n';
 
 export class PreviewPane {
@@ -6,13 +8,23 @@ export class PreviewPane {
   private simulator: SimulatorDetailData;
   private currentVersion: number;
   private onBack: () => void;
+  private chatPanel: ChatPanel | null = null;
+  private selectEl: HTMLSelectElement | null = null;
+  private iframeWrapperEl: HTMLElement | null = null;
+  private openLinkEl: HTMLAnchorElement | null = null;
 
   constructor(simulator: SimulatorDetailData, onBack: () => void) {
     this.container = document.createElement('div');
     this.container.className = 'detail-container';
     this.simulator = simulator;
-    this.currentVersion = simulator.latest_version;
+    this.currentVersion = this.extractVersionNumber(simulator.latest_version || simulator.versions[simulator.versions.length - 1] || 1);
     this.onBack = onBack;
+  }
+
+  private extractVersionNumber(val: any): number {
+    if (typeof val === 'number') return val;
+    const match = String(val).match(/v?(\d+)/i);
+    return match ? parseInt(match[1], 10) : 1;
   }
 
   public render(): HTMLElement {
@@ -40,7 +52,11 @@ export class PreviewPane {
 
     this.container.appendChild(header);
 
-    // Preview Frame Container
+    // Split Layout Container (Preview on Left, Chat on Right)
+    const splitLayout = document.createElement('div');
+    splitLayout.className = 'detail-split-layout';
+
+    // Left Column: Preview Frame Container
     const previewContainer = document.createElement('div');
     previewContainer.className = 'preview-container';
 
@@ -52,45 +68,122 @@ export class PreviewPane {
     versionSelectWrapper.className = 'version-selector';
     versionSelectWrapper.innerHTML = `<label>${t('detail.versions')}:</label>`;
 
-    const select = document.createElement('select');
-    this.simulator.versions.forEach((v) => {
+    this.selectEl = document.createElement('select');
+    this.renderVersionOptions();
+
+    this.selectEl.addEventListener('change', (e) => {
+      const selectedVer = parseInt((e.target as HTMLSelectElement).value, 10);
+      this.currentVersion = selectedVer;
+      if (this.iframeWrapperEl) {
+        this.updateIframe(this.iframeWrapperEl);
+      }
+      if (this.openLinkEl) {
+        this.openLinkEl.href = getSimulatorHtmlUrl(this.simulator.id, this.currentVersion);
+      }
+    });
+
+    versionSelectWrapper.appendChild(this.selectEl);
+    toolbar.appendChild(versionSelectWrapper);
+
+    const toolbarRight = document.createElement('div');
+    toolbarRight.style.display = 'flex';
+    toolbarRight.style.gap = '0.5rem';
+
+    const timelineBtn = document.createElement('button');
+    timelineBtn.className = 'btn btn-secondary';
+    timelineBtn.textContent = t('timeline.button');
+    timelineBtn.addEventListener('click', () => {
+      const modal = new VersionTimelineModal(
+        this.simulator.id,
+        this.simulator.name,
+        (ver: number) => {
+          this.currentVersion = ver;
+          if (this.selectEl) this.selectEl.value = String(ver);
+          if (this.iframeWrapperEl) this.updateIframe(this.iframeWrapperEl);
+          if (this.openLinkEl) this.openLinkEl.href = getSimulatorHtmlUrl(this.simulator.id, this.currentVersion);
+        }
+      );
+      modal.show();
+    });
+
+    this.openLinkEl = document.createElement('a');
+    this.openLinkEl.className = 'btn btn-secondary';
+    this.openLinkEl.target = '_blank';
+    this.openLinkEl.rel = 'noopener noreferrer';
+    this.openLinkEl.href = getSimulatorHtmlUrl(this.simulator.id, this.currentVersion);
+    this.openLinkEl.textContent = t('detail.openInBrowser');
+
+    toolbarRight.appendChild(timelineBtn);
+    toolbarRight.appendChild(this.openLinkEl);
+    toolbar.appendChild(toolbarRight);
+
+    previewContainer.appendChild(toolbar);
+
+    // Iframe Wrapper
+    this.iframeWrapperEl = document.createElement('div');
+    this.iframeWrapperEl.className = 'preview-iframe-wrapper';
+    this.updateIframe(this.iframeWrapperEl);
+
+    previewContainer.appendChild(this.iframeWrapperEl);
+    splitLayout.appendChild(previewContainer);
+
+    // Right Column: Chat Panel
+    this.chatPanel = new ChatPanel(
+      this.simulator.id,
+      this.simulator.chat || [],
+      (newVersion: number) => this.handleIterationComplete(newVersion)
+    );
+    splitLayout.appendChild(this.chatPanel.render());
+
+    this.container.appendChild(splitLayout);
+
+    return this.container;
+  }
+
+  private renderVersionOptions() {
+    if (!this.selectEl) return;
+    this.selectEl.innerHTML = '';
+
+    const verNumbers: number[] = [];
+    (this.simulator.versions || []).forEach((v) => {
+      const num = this.extractVersionNumber(v);
+      if (!verNumbers.includes(num)) verNumbers.push(num);
+    });
+
+    if (verNumbers.length === 0) verNumbers.push(1);
+
+    verNumbers.sort((a, b) => a - b).forEach((v) => {
       const opt = document.createElement('option');
       opt.value = String(v);
       opt.textContent = t('detail.versionSelect', { version: v });
       if (v === this.currentVersion) {
         opt.selected = true;
       }
-      select.appendChild(opt);
+      this.selectEl!.appendChild(opt);
     });
+  }
 
-    select.addEventListener('change', (e) => {
-      const selectedVer = parseInt((e.target as HTMLSelectElement).value, 10);
-      this.currentVersion = selectedVer;
-      this.updateIframe(iframeWrapper);
-    });
+  private async handleIterationComplete(newVersion: number) {
+    this.currentVersion = newVersion;
 
-    versionSelectWrapper.appendChild(select);
-    toolbar.appendChild(versionSelectWrapper);
+    try {
+      const updatedSim = await fetchSimulator(this.simulator.id);
+      this.simulator = updatedSim;
+    } catch (e) {
+      console.warn('Failed to re-fetch simulator data after iteration:', e);
+      if (!this.simulator.versions.includes(newVersion as any)) {
+        this.simulator.versions.push(newVersion as any);
+      }
+    }
 
-    const openLink = document.createElement('a');
-    openLink.className = 'btn btn-secondary';
-    openLink.target = '_blank';
-    openLink.rel = 'noopener noreferrer';
-    openLink.href = getSimulatorHtmlUrl(this.simulator.id, this.currentVersion);
-    openLink.textContent = t('detail.openInBrowser');
-    toolbar.appendChild(openLink);
+    this.renderVersionOptions();
 
-    previewContainer.appendChild(toolbar);
-
-    // Iframe Wrapper
-    const iframeWrapper = document.createElement('div');
-    iframeWrapper.className = 'preview-iframe-wrapper';
-    this.updateIframe(iframeWrapper);
-
-    previewContainer.appendChild(iframeWrapper);
-    this.container.appendChild(previewContainer);
-
-    return this.container;
+    if (this.iframeWrapperEl) {
+      this.updateIframe(this.iframeWrapperEl);
+    }
+    if (this.openLinkEl) {
+      this.openLinkEl.href = getSimulatorHtmlUrl(this.simulator.id, this.currentVersion);
+    }
   }
 
   private updateIframe(wrapper: HTMLElement) {

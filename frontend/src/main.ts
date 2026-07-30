@@ -2,7 +2,6 @@ import './styles/main.css';
 import { subscribe, t } from './i18n';
 import { createLanguageToggle } from './components/LanguageToggle';
 import { SettingsModal } from './components/SettingsModal';
-import { ComingSoonModal } from './components/ComingSoonModal';
 import { HomePage } from './pages/Home';
 import { SimulatorDetailPage } from './pages/SimulatorDetail';
 
@@ -13,8 +12,8 @@ type ViewState =
 class App {
   private appRoot: HTMLElement;
   private currentView: ViewState = { type: 'home' };
-  private comingSoonModal = new ComingSoonModal();
   private settingsModal = new SettingsModal();
+
 
   constructor(root: HTMLElement) {
     this.appRoot = root;

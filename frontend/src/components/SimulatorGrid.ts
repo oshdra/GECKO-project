@@ -7,6 +7,7 @@ export class SimulatorGrid {
   private simulators: SimulatorSummary[] = [];
   private onSelectSimulator: (id: string) => void;
   private selectedDomain: string = 'all';
+  private selectedTag: string = 'all';
   private searchQuery: string = '';
 
   constructor(onSelectSimulator: (id: string) => void) {
@@ -22,15 +23,20 @@ export class SimulatorGrid {
   public render(): HTMLElement {
     this.container.innerHTML = '';
 
-    // Collect unique domains
+    // Collect unique domains and tags
     const domains = Array.from(
       new Set(this.simulators.map((s) => (s.domain || 'other').toLowerCase()))
     );
 
-    // Filter bar
+    const allTags = Array.from(
+      new Set(this.simulators.flatMap((s) => s.tags || []))
+    ).filter(Boolean);
+
+    // Main Filter Bar
     const filterBar = document.createElement('div');
     filterBar.className = 'filter-bar';
 
+    // Domain Tabs
     const tabsContainer = document.createElement('div');
     tabsContainer.className = 'domain-tabs';
 
@@ -76,6 +82,39 @@ export class SimulatorGrid {
     filterBar.appendChild(searchBox);
     this.container.appendChild(filterBar);
 
+    // Tags Bar (if tags exist)
+    if (allTags.length > 0) {
+      const tagsBar = document.createElement('div');
+      tagsBar.className = 'tags-filter-bar';
+
+      const tagLabel = document.createElement('span');
+      tagLabel.className = 'tags-filter-label';
+      tagLabel.textContent = `${t('detail.tags')}:`;
+      tagsBar.appendChild(tagLabel);
+
+      const allTagBtn = document.createElement('button');
+      allTagBtn.className = `tag-chip-btn ${this.selectedTag === 'all' ? 'active' : ''}`;
+      allTagBtn.textContent = 'All Tags';
+      allTagBtn.addEventListener('click', () => {
+        this.selectedTag = 'all';
+        this.render();
+      });
+      tagsBar.appendChild(allTagBtn);
+
+      allTags.forEach((tag) => {
+        const btn = document.createElement('button');
+        btn.className = `tag-chip-btn ${this.selectedTag === tag ? 'active' : ''}`;
+        btn.textContent = `#${tag}`;
+        btn.addEventListener('click', () => {
+          this.selectedTag = this.selectedTag === tag ? 'all' : tag;
+          this.render();
+        });
+        tagsBar.appendChild(btn);
+      });
+
+      this.container.appendChild(tagsBar);
+    }
+
     // Grid container
     const gridContainer = document.createElement('div');
     gridContainer.className = 'simulator-grid';
@@ -94,6 +133,10 @@ export class SimulatorGrid {
         this.selectedDomain === 'all' ||
         (sim.domain || 'other').toLowerCase() === this.selectedDomain;
 
+      const matchesTag =
+        this.selectedTag === 'all' ||
+        (sim.tags || []).includes(this.selectedTag);
+
       const q = this.searchQuery.toLowerCase().trim();
       const matchesQuery =
         !q ||
@@ -101,7 +144,7 @@ export class SimulatorGrid {
         (sim.domain || '').toLowerCase().includes(q) ||
         (sim.tags || []).some((t) => t.toLowerCase().includes(q));
 
-      return matchesDomain && matchesQuery;
+      return matchesDomain && matchesTag && matchesQuery;
     });
 
     if (filtered.length === 0) {

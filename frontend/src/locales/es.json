@@ -29,17 +29,37 @@
     "concept": "Concepto",
     "domain": "Dominio",
     "tags": "Etiquetas",
-    "lastUpdated": "Última Actualización"
+    "lastUpdated": "Última Actualización",
+    "chatTitle": "Chat de Iteración",
+    "chatPlaceholder": "Solicita una modificación o función (ej: 'Agregar vectores de fuerza')...",
+    "sendBtn": "Enviar",
+    "thinking": "Actualizando simulador...",
+    "noMessages": "Sin historial de conversación aún."
   },
   "settings": {
     "title": "Configuración de GECKO",
     "apiKeyLabel": "Clave API de Gemini",
     "apiKeyPlaceholder": "Ingresa tu clave API de Gemini (AIzaSy...)",
     "apiKeyHelp": "Tu clave API se almacena localmente en la configuración del backend y nunca se comparte.",
+    "aliasLabel": "Nombre / Alias del Explorador",
+    "aliasPlaceholder": "Ingresa tu nombre o alias",
+    "avatarColorLabel": "Color de Acento del Avatar",
+    "prefLangLabel": "Idioma Preferido",
     "saveBtn": "Guardar Configuración",
     "savedMsg": "¡Configuración guardada exitosamente!",
     "errorMsg": "Error al guardar la configuración.",
     "closeBtn": "Cerrar"
+  },
+  "timeline": {
+    "title": "Línea de Tiempo y Cambios de Versión",
+    "button": "Línea de Tiempo y Diffs 📜",
+    "versionLabel": "Versión {version}",
+    "diffTitle": "Cambios en el Frontmatter de la Espec.",
+    "added": "Agregado",
+    "changed": "Modificado",
+    "removed": "Eliminado",
+    "noChanges": "Sin cambios en el frontmatter registrados para esta versión.",
+    "previewVersion": "Previsualizar Versión {version}"
   },
   "comingSoon": {
     "title": "Flujo de Generación con IA",

@@ -29,17 +29,37 @@
     "concept": "Concept",
     "domain": "Domain",
     "tags": "Tags",
-    "lastUpdated": "Last Updated"
+    "lastUpdated": "Last Updated",
+    "chatTitle": "Iteration Chat",
+    "chatPlaceholder": "Request a modification or feature (e.g. 'Add force vectors', 'Change color scheme')...",
+    "sendBtn": "Send",
+    "thinking": "Updating simulator...",
+    "noMessages": "No conversation history yet."
   },
   "settings": {
     "title": "GECKO Settings",
     "apiKeyLabel": "Gemini API Key",
     "apiKeyPlaceholder": "Enter your Gemini API key (AIzaSy...)",
     "apiKeyHelp": "Your API key is stored locally in backend environment/settings and never shared.",
+    "aliasLabel": "Explorer Name / Alias",
+    "aliasPlaceholder": "Enter your name or alias",
+    "avatarColorLabel": "Avatar Accent Color",
+    "prefLangLabel": "Preferred Language",
     "saveBtn": "Save Settings",
     "savedMsg": "Settings saved successfully!",
     "errorMsg": "Failed to save settings.",
     "closeBtn": "Close"
+  },
+  "timeline": {
+    "title": "Version Timeline & Frontmatter Diffs",
+    "button": "Timeline & Diffs 📜",
+    "versionLabel": "Version {version}",
+    "diffTitle": "Spec Frontmatter Changes",
+    "added": "Added",
+    "changed": "Changed",
+    "removed": "Removed",
+    "noChanges": "No frontmatter changes recorded for this version.",
+    "previewVersion": "Preview Version {version}"
   },
   "comingSoon": {
     "title": "AI Generation Pipeline",

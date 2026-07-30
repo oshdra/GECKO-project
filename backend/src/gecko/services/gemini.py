@@ -1,8 +1,13 @@
 """Gemini API client service for GECKO AI Pipeline."""
 
 import asyncio
+import warnings
 from typing import AsyncIterator, Optional
-import google.generativeai as genai
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
+    import google.generativeai as genai
+
 
 from gecko.config import settings
 

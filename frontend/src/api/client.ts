@@ -39,6 +39,13 @@ export interface GeckoSpec {
   exports?: string[];
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  step?: number;
+  timestamp: string;
+}
+
 export interface SimulatorDetailData {
   id: string;
   name: string;
@@ -49,12 +56,37 @@ export interface SimulatorDetailData {
   last_modified: string;
   spec: GeckoSpec;
   narrative?: string;
+  chat?: ChatMessage[];
 }
 
 export interface SettingsData {
   gemini_api_key?: string;
   default_language?: string;
+  language?: string;
 }
+
+
+export interface UserProfile {
+  alias: string;
+  avatar_color: string;
+  language: string;
+}
+
+export interface TimelineDiff {
+  added: Record<string, any>;
+  changed: Record<string, { from: any; to: any }>;
+  removed: Record<string, any>;
+}
+
+export interface TimelineItem {
+  version: number;
+  filename: string;
+  date: string;
+  summary: string;
+  frontmatter: Record<string, any>;
+  diff: TimelineDiff;
+}
+
 
 export interface ConceptProposal {
   concept_name: string;
@@ -199,4 +231,65 @@ export async function generateFullSimulatorSse(
 
   await readSseStream(res, onEvent);
 }
+
+export async function fetchSimulatorChat(id: string): Promise<ChatMessage[]> {
+  const res = await fetch(`${API_BASE}/simulators/${encodeURIComponent(id)}/chat`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch chat for simulator ${id}: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function iterateSimulatorSse(
+  id: string,
+  request: string,
+  onEvent: (event: GenerateEvent) => void
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/simulators/${encodeURIComponent(id)}/iterate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ request }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Iteration endpoint returned HTTP ${res.status}`);
+  }
+
+  await readSseStream(res, onEvent);
+}
+
+
+export async function fetchProfile(): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/profile`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch profile: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function updateProfile(data: Partial<UserProfile>): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/profile`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update profile: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchSimulatorTimeline(id: string): Promise<TimelineItem[]> {
+  const res = await fetch(`${API_BASE}/simulators/${encodeURIComponent(id)}/timeline`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch timeline for simulator ${id}: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+
 

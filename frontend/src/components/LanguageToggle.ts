@@ -1,4 +1,4 @@
-import { getLanguage, toggleLanguage, t } from '../i18n';
+import { getLanguage, toggleLanguage } from '../i18n';
 
 export function createLanguageToggle(onToggle: () => void): HTMLElement {
   const btn = document.createElement('button');

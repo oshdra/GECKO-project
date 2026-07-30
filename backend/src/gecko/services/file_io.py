@@ -90,6 +90,7 @@ def get_simulator(sim_id: str, base_dir: Optional[Path] = None) -> Optional[Dict
         last_modified = datetime.fromtimestamp(spec_file.stat().st_mtime).isoformat()
 
     versions = get_simulator_versions(sim_id, base_dir=base_dir)
+    chat = get_simulator_chat(sim_id, base_dir=base_dir)
 
     return {
         "id": sim_id,
@@ -99,7 +100,34 @@ def get_simulator(sim_id: str, base_dir: Optional[Path] = None) -> Optional[Dict
         "versions": versions,
         "version_count": len(versions),
         "last_modified": last_modified,
+        "chat": chat,
     }
+
+
+def get_simulator_chat(sim_id: str, base_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """Get chat history from chat.json for a simulator."""
+    target_dir = (base_dir or settings.simulators_path) / sim_id
+    chat_file = target_dir / "chat.json"
+    if chat_file.exists() and chat_file.is_file():
+        try:
+            return json.loads(chat_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return []
+
+
+def add_chat_message(sim_id: str, message: Dict[str, Any], base_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """Add a message to chat.json for a simulator."""
+    target_dir = (base_dir or settings.simulators_path) / sim_id
+    if not target_dir.exists():
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+    chat = get_simulator_chat(sim_id, base_dir=base_dir)
+    chat.append(message)
+    chat_file = target_dir / "chat.json"
+    chat_file.write_text(json.dumps(chat, indent=2), encoding="utf-8")
+    return chat
+
 
 
 def get_simulator_versions(sim_id: str, base_dir: Optional[Path] = None) -> List[str]:
@@ -122,14 +150,23 @@ def get_simulator_versions(sim_id: str, base_dir: Optional[Path] = None) -> List
 def get_simulator_html(sim_id: str, version: str, base_dir: Optional[Path] = None) -> Optional[str]:
     """Get HTML file content for a specific simulator version."""
     target_dir = (base_dir or settings.simulators_path) / sim_id
-    if not version.endswith(".html"):
-        version = f"{version}.html"
 
-    html_file = target_dir / version
-    if not html_file.exists() or not html_file.is_file():
-        return None
+    candidates = [
+        version,
+        f"{version}.html" if not version.endswith(".html") else version,
+        f"v{version}.html" if not version.startswith("v") else version,
+        f"v{version}" if not version.startswith("v") else version,
+    ]
 
-    return html_file.read_text(encoding="utf-8")
+    for cand in candidates:
+        if not cand.endswith(".html"):
+            cand = f"{cand}.html"
+        html_file = target_dir / cand
+        if html_file.exists() and html_file.is_file():
+            return html_file.read_text(encoding="utf-8")
+
+    return None
+
 
 
 def create_simulator(

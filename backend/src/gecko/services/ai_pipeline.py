@@ -7,7 +7,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from gecko.config import WORKSPACE_ROOT, settings
 from gecko.services import file_io, gemini, knowledge
@@ -524,4 +524,177 @@ Future versions will add enhanced interaction behaviors and numerical telemetry 
         "html_path": str(sim_dir / "v1.html"),
         "spec_path": str(sim_dir / "spec.md"),
     }
+
+
+def build_iteration_prompt(
+    spec_frontmatter: Dict[str, Any],
+    spec_body: str,
+    chat_history: List[Dict[str, Any]],
+    user_request: str,
+) -> str:
+    """Build LLM prompt to update concept proposal / spec based on iteration user request."""
+    return f"""Task: Modify an existing GECKO simulator spec based on user request.
+
+Current Spec Frontmatter:
+{json.dumps(spec_frontmatter, indent=2)}
+
+Current Spec Narrative:
+{spec_body}
+
+Chat History:
+{json.dumps(chat_history[-5:], indent=2)}
+
+User Modification Request: {user_request}
+
+=== INSTRUCTIONS ===
+Update the proposal card structure to incorporate the user's requested changes.
+Respond ONLY with a valid JSON object wrapped in ```json ... ``` containing:
+- "concept_name": Title of the concept (keep or update if relevant)
+- "domain": Domain category
+- "summary": Updated summary including new changes
+- "rendering_library": Recommended library
+- "agents": Updated array of objects [{{ "name": str, "attributes": [str], "behaviors": [str] }}]
+- "environment": Updated object {{ "type": "2D"|"3D", "physics": str, "attributes": [str] }}
+- "interactions": Updated array of objects [{{ "trigger": str, "effect": str }}]
+- "visualization_plan": Updated description of layout, controls, and visual aids
+"""
+
+
+def assemble_and_save_iteration(
+    sim_id: str,
+    proposal: Dict[str, Any],
+    viz_plan: Dict[str, Any],
+    physics_model: Dict[str, Any],
+    html_code: str,
+    change_summary: str,
+    base_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Assemble iteration HTML, determine new version number, update spec.md and chat.json."""
+    gecko_ui_js = load_gecko_ui_js()
+
+    if "/* GECKO_UI_JS */" in html_code:
+        final_html = html_code.replace("/* GECKO_UI_JS */", gecko_ui_js)
+    elif "gecko-ui.js" not in html_code and "GeckoUI" in html_code:
+        script_tag = f"<script>\n{gecko_ui_js}\n</script>\n"
+        if "</head>" in html_code:
+            final_html = html_code.replace("</head>", f"{script_tag}</head>")
+        else:
+            final_html = f"{script_tag}\n{html_code}"
+    else:
+        final_html = html_code
+
+    target_base = base_dir or settings.simulators_path
+    sim_dir = target_base / sim_id
+    sim_dir.mkdir(parents=True, exist_ok=True)
+
+    existing_versions = file_io.get_simulator_versions(sim_id, base_dir=target_base)
+    version_numbers = []
+    for v in existing_versions:
+        match = re.search(r"v(\d+)\.html$", v)
+        if match:
+            version_numbers.append(int(match.group(1)))
+    new_version_num = (max(version_numbers) if version_numbers else 0) + 1
+    new_version_filename = f"v{new_version_num}.html"
+
+    (sim_dir / new_version_filename).write_text(final_html, encoding="utf-8")
+
+    existing_sim = file_io.get_simulator(sim_id, base_dir=target_base)
+    frontmatter = existing_sim.get("frontmatter", {}) if existing_sim else {}
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    frontmatter["version"] = new_version_num
+    frontmatter["modified"] = today
+    if "agents" in proposal and proposal["agents"]:
+        frontmatter["agents"] = proposal["agents"]
+    if "environment" in proposal and proposal["environment"]:
+        frontmatter["environment"] = proposal["environment"]
+    if "interactions" in proposal and proposal["interactions"]:
+        frontmatter["interactions"] = proposal["interactions"]
+
+    body_md = existing_sim.get("spec_body", "") if existing_sim else ""
+    if not body_md:
+        name = proposal.get("concept_name", sim_id)
+        body_md = f"# {name}\n\n## Concept\n{change_summary}"
+
+    spec_content = file_io.dump_frontmatter(frontmatter, body_md)
+    (sim_dir / "spec.md").write_text(spec_content, encoding="utf-8")
+
+    now_iso = datetime.now().isoformat()
+    file_io.add_chat_message(
+        sim_id,
+        {
+            "role": "assistant",
+            "content": change_summary,
+            "step": 4,
+            "timestamp": now_iso,
+        },
+        base_dir=target_base,
+    )
+
+    return {
+        "id": sim_id,
+        "version": new_version_num,
+        "html_path": str(sim_dir / new_version_filename),
+        "spec_path": str(sim_dir / "spec.md"),
+    }
+
+
+async def run_iteration_pipeline_sse(
+    sim_id: str, user_request: str, base_dir: Optional[Path] = None
+) -> AsyncIterator[str]:
+    """Run full iteration pipeline and yield SSE events."""
+    sim = file_io.get_simulator(sim_id, base_dir=base_dir)
+    if not sim:
+        yield f"data: {json.dumps({'step': 1, 'status': 'error', 'error': f'Simulator {sim_id} not found'})}\n\n"
+        return
+
+    now_iso = datetime.now().isoformat()
+    file_io.add_chat_message(
+        sim_id,
+        {"role": "user", "content": user_request, "timestamp": now_iso},
+        base_dir=base_dir,
+    )
+
+    try:
+        # Step 1: Concept & Spec Revision
+        yield f"data: {json.dumps({'step': 1, 'status': 'running', 'message': f'Analyzing change request: {user_request}'})}\n\n"
+        frontmatter = sim.get("frontmatter", {})
+        spec_body = sim.get("spec_body", "")
+        chat_hist = sim.get("chat", [])
+
+        prompt1 = build_iteration_prompt(frontmatter, spec_body, chat_hist, user_request)
+        raw_llm1 = await gemini.generate_async(prompt1)
+        proposal = parse_proposal(raw_llm1)
+        change_summary = proposal.get("summary", "Updated simulator according to request.")
+
+        yield f"data: {json.dumps({'step': 1, 'status': 'done', 'proposal': proposal})}\n\n"
+
+        # Step 2: Visualization Design Update
+        yield f"data: {json.dumps({'step': 2, 'status': 'running', 'message': 'Updating visualization design...'})}\n\n"
+        viz_plan = await step2_visualization_design(proposal)
+        yield f"data: {json.dumps({'step': 2, 'status': 'done', 'viz_plan': viz_plan})}\n\n"
+
+        # Step 3: Physics & Logic Model Update
+        yield f"data: {json.dumps({'step': 3, 'status': 'running', 'message': 'Updating physics & logic model...'})}\n\n"
+        physics_model = await step3_physics_model(proposal, viz_plan)
+        yield f"data: {json.dumps({'step': 3, 'status': 'done', 'physics_model': physics_model})}\n\n"
+
+        # Step 4: HTML Generation & Version Assembly
+        yield f"data: {json.dumps({'step': 4, 'status': 'running', 'message': 'Generating updated HTML code...'})}\n\n"
+        raw_html = await step4_html_generation(proposal, viz_plan, physics_model)
+
+        sim_meta = assemble_and_save_iteration(
+            sim_id=sim_id,
+            proposal=proposal,
+            viz_plan=viz_plan,
+            physics_model=physics_model,
+            html_code=raw_html,
+            change_summary=change_summary,
+            base_dir=base_dir,
+        )
+
+        yield f"data: {json.dumps({'step': 4, 'status': 'done', 'simulator_id': sim_id, 'version': sim_meta['version']})}\n\n"
+
+    except Exception as e:
+        yield f"data: {json.dumps({'step': 4, 'status': 'error', 'error': str(e)})}\n\n"
 

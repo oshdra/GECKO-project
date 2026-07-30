@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from gecko.config import settings, WORKSPACE_ROOT
 from gecko.routes import generate as generate_router
+from gecko.routes import profile as profile_router
 from gecko.routes import settings as settings_router
 from gecko.routes import simulators as simulators_router
 
@@ -23,7 +24,9 @@ app.add_middleware(
 
 app.include_router(simulators_router.router)
 app.include_router(settings_router.router)
+app.include_router(profile_router.router)
 app.include_router(generate_router.router)
+
 
 
 @app.get("/api/health")
